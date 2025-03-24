@@ -19,7 +19,7 @@ composer require tourze/bundle-dependency
 
 ## Usage 使用方法
 
-1. Implement the interface in your bundle 在你的 Bundle 中实现接口：
+- Implement the interface in your bundle 在你的 Bundle 中实现接口：
 
 ```php
 use Tourze\BundleDependency\BundleDependencyInterface;
@@ -36,7 +36,7 @@ class YourBundle implements BundleDependencyInterface
 }
 ```
 
-2. Resolve dependencies 解析依赖：
+- Resolve dependencies 解析依赖：
 
 ```php
 use Tourze\BundleDependency\ResolveHelper;
