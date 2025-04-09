@@ -31,7 +31,11 @@ class ResolveHelper
 
     public static function resolveByBundleName(string $bundleName): \Traversable
     {
-        $className = "{$bundleName}\\{$bundleName}";
+        // 处理类似 "TestBundle\C" 的格式
+        $parts = explode('\\', $bundleName);
+        $shortName = end($parts);
+
+        $className = "{$bundleName}\\{$shortName}";
         if (!class_exists($className)) {
             return;
         }
@@ -42,8 +46,11 @@ class ResolveHelper
         foreach (static::resolveBundleDependencies([$className => ['all' => true]]) as $bundle => $env) {
             // 满足条件才返回喔
             $tmp = explode('\\', $bundle, 2);
-            if ($tmp[0] === $tmp[1]) {
+            if (count($tmp) > 1 && $tmp[0] === $tmp[1]) {
                 yield $tmp[0];
+            } else {
+                // 如果格式不匹配，可能是普通的bundle名
+                yield basename(str_replace('\\', '/', $bundle));
             }
         }
     }
