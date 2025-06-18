@@ -6,6 +6,12 @@ namespace Tourze\BundleDependency;
 
 class ResolveHelper
 {
+    /**
+     * @param array<class-string, array<string, bool>> $bundles
+     * @param array<class-string, array<string, bool>> $resolved
+     * @param array<class-string, bool> $resolving
+     * @return \Traversable<class-string, array<string, bool>>
+     */
     public static function resolveBundleDependencies(array $bundles, array &$resolved = [], array $resolving = []): \Traversable
     {
         foreach ($bundles as $bundle => $env) {
@@ -29,11 +35,14 @@ class ResolveHelper
         //return $resolved;
     }
 
+    /**
+     * @return \Traversable<string>
+     */
     public static function resolveByBundleName(string $bundleName): \Traversable
     {
         // 处理类似 "TestBundle\C" 的格式
         $parts = explode('\\', $bundleName);
-        $shortName = end($parts);
+        $shortName = is_string(end($parts)) ? end($parts) : '';
 
         $className = "{$bundleName}\\{$shortName}";
         if (!class_exists($className)) {
@@ -50,7 +59,7 @@ class ResolveHelper
                 yield $tmp[0];
             } else {
                 // 如果格式不匹配，可能是普通的bundle名
-                yield basename(str_replace('\\', '/', $bundle));
+                yield basename(str_replace('\\', '/', (string) $bundle));
             }
         }
     }
