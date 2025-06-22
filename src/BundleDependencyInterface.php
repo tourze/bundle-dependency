@@ -11,7 +11,7 @@ interface BundleDependencyInterface
 {
     /**
      * 获取需要合并的依赖
-     * 
+     *
      * @return array<class-string, array<string, bool>>
      */
     public static function getBundleDependencies(): array;
