@@ -9,7 +9,7 @@ class TestCase extends \PHPUnit\Framework\TestCase
     /**
      * @param array<class-string, array<string, bool>> $dependencies
      */
-    protected static function createTestBundle(string $name, array $dependencies = []): string
+    public static function createTestBundle(string $name, array $dependencies = []): string
     {
         $className = "TestBundle\\{$name}\\{$name}";
         if (!class_exists($className)) {
