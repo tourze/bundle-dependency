@@ -1,56 +1,190 @@
-# Symfony Bundle Dependency Interface
+# Bundle Dependency
 
-A simple interface for defining Symfony bundle dependencies. This package provides a way to manage and resolve bundle dependencies in Symfony applications.
+[English](README.md) | [中文](README.zh-CN.md)
 
-Symfony Bundle 依赖接口，用于定义和管理 Symfony 应用程序中的 Bundle 依赖关系。
+[![Latest Version](https://img.shields.io/packagist/v/tourze/bundle-dependency.svg?style=flat-square)](https://packagist.org/packages/tourze/bundle-dependency)
+[![Total Downloads](https://img.shields.io/packagist/dt/tourze/bundle-dependency.svg?style=flat-square)](https://packagist.org/packages/tourze/bundle-dependency)
+[![PHP Version](https://img.shields.io/packagist/php-v/tourze/bundle-dependency.svg?style=flat-square)](https://packagist.org/packages/tourze/bundle-dependency)
+[![License](https://img.shields.io/packagist/l/tourze/bundle-dependency.svg?style=flat-square)](https://packagist.org/packages/tourze/bundle-dependency)
 
-## Features 特性
+A lightweight interface and resolver for managing Symfony bundle dependencies, 
+enabling automatic resolution and circular dependency detection.
 
-- Simple interface to define bundle dependencies 简单的接口定义 Bundle 依赖
-- Automatic dependency resolution 自动依赖解析
-- Circular dependency detection 循环依赖检测
-- Support for environment-specific dependencies 支持环境特定的依赖
+## Features
 
-## Installation 安装
+- **Simple interface** - Define bundle dependencies with a single method
+- **Automatic resolution** - Recursively resolves all bundle dependencies
+- **Circular detection** - Prevents circular dependencies (with graceful handling)
+- **Environment support** - Control bundle loading per environment (dev, test, prod)
+- **Lightweight** - No external dependencies except PHP 8.1+
+
+## Installation
 
 ```bash
 composer require tourze/bundle-dependency
 ```
 
-## Usage 使用方法
+## Quick Start
 
-- Implement the interface in your bundle 在你的 Bundle 中实现接口：
+### 1. Implement the interface in your bundle
 
 ```php
-use Tourze\BundleDependency\BundleDependencyInterface;
+<?php
 
-class YourBundle implements BundleDependencyInterface
+use Tourze\BundleDependency\BundleDependencyInterface;
+use Symfony\Component\HttpKernel\Bundle\Bundle;
+
+class YourBundle extends Bundle implements BundleDependencyInterface
 {
     public static function getBundleDependencies(): array
     {
         return [
-            'Vendor\DependentBundle' => ['all' => true],
-            'Vendor\AnotherBundle' => ['dev' => true, 'test' => true]
+            // Load in all environments
+            'Vendor\RequiredBundle\RequiredBundle' => ['all' => true],
+            
+            // Load only in dev and test environments
+            'Vendor\DebugBundle\DebugBundle' => ['dev' => true, 'test' => true],
+            
+            // Load only in production
+            'Vendor\OptimizedBundle\OptimizedBundle' => ['prod' => true],
         ];
     }
 }
 ```
 
-- Resolve dependencies 解析依赖：
+### 2. Resolve dependencies
 
 ```php
+<?php
+
 use Tourze\BundleDependency\ResolveHelper;
 
-// 解析指定 Bundle 的所有依赖
-$dependencies = iterator_to_array(ResolveHelper::resolveByBundleName('YourBundle'));
-
-// 或者直接解析一组 Bundle
+// Resolve all dependencies for a set of bundles
 $bundles = [
-    'YourBundle' => ['all' => true]
+    'App\YourBundle\YourBundle' => ['all' => true],
 ];
-$dependencies = iterator_to_array(ResolveHelper::resolveBundleDependencies($bundles));
+
+foreach (ResolveHelper::resolveBundleDependencies($bundles) as $bundle => $environments) {
+    // $bundle = 'Vendor\RequiredBundle\RequiredBundle'
+    // $environments = ['all' => true]
+}
+
+// Or resolve by bundle name
+foreach (ResolveHelper::resolveByBundleName('YourBundle') as $bundleName) {
+    // Returns simplified bundle names
+}
 ```
 
-## License 许可证
+## Advanced Usage
 
-MIT
+### Integration with Symfony Kernel
+
+```php
+<?php
+
+use Symfony\Component\HttpKernel\Kernel;
+use Tourze\BundleDependency\ResolveHelper;
+
+class AppKernel extends Kernel
+{
+    public function registerBundles(): iterable
+    {
+        $bundles = [
+            'App\CoreBundle\CoreBundle' => ['all' => true],
+            'App\ApiBundle\ApiBundle' => ['all' => true],
+        ];
+
+        // Automatically resolve and register all dependencies
+        foreach (ResolveHelper::resolveBundleDependencies($bundles) as $bundle => $envs) {
+            if (isset($envs['all']) || isset($envs[$this->environment])) {
+                yield new $bundle();
+            }
+        }
+    }
+}
+```
+
+### Handling circular dependencies
+
+The resolver gracefully handles circular dependencies by skipping already-resolving bundles:
+
+```php
+// BundleA depends on BundleB
+// BundleB depends on BundleA
+// No exception thrown, both bundles are resolved once
+```
+
+## API Reference
+
+### BundleDependencyInterface
+
+```php
+interface BundleDependencyInterface
+{
+    /**
+     * Get bundle dependencies with their environment configuration
+     *
+     * @return array<class-string, array<string, bool>>
+     */
+    public static function getBundleDependencies(): array;
+}
+```
+
+### ResolveHelper
+
+```php
+class ResolveHelper
+{
+    /**
+     * Recursively resolve bundle dependencies
+     *
+     * @param array<class-string, array<string, bool>> $bundles Initial bundles
+     * @return \Traversable<class-string, array<string, bool>> Resolved bundles
+     */
+    public static function resolveBundleDependencies(array $bundles): \Traversable;
+
+    /**
+     * Resolve dependencies by bundle name
+     *
+     * @param string $bundleName Bundle name (e.g., 'YourBundle')
+     * @return \Traversable<string> Simplified bundle names
+     */
+    public static function resolveByBundleName(string $bundleName): \Traversable;
+}
+```
+
+## Configuration
+
+This package requires no configuration. Simply implement the 
+`BundleDependencyInterface` in your bundles and use the `ResolveHelper` 
+to resolve dependencies.
+
+### Environment Configuration
+
+Supported environment keys:
+- `'all' => true` - Load in all environments
+- `'dev' => true` - Load only in development
+- `'test' => true` - Load only in testing
+- `'prod' => true` - Load only in production
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Testing
+
+```bash
+# Run tests
+./vendor/bin/phpunit packages/bundle-dependency/tests
+
+# Run static analysis
+php -d memory_limit=2G ./vendor/bin/phpstan analyse packages/bundle-dependency
+```
+
+## License
+
+The MIT License (MIT). Please see [License File](LICENSE) for more information.

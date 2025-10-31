@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Tourze\BundleDependency\Tests\Unit\Tests;
+namespace Tourze\BundleDependency\Tests;
 
-use PHPUnit\Framework\TestCase as PHPUnitTestCase;
-use Tourze\BundleDependency\Tests\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\BundleDependency\BundleDependencyInterface;
 
-class TestCaseTest extends PHPUnitTestCase
+/**
+ * @internal
+ */
+#[CoversClass(AbstractTestCase::class)]
+final class TestCaseTest extends AbstractTestCase
 {
     public function testCreateTestBundle(): void
     {
@@ -17,11 +21,11 @@ class TestCaseTest extends PHPUnitTestCase
             \stdClass::class => ['all' => true],
         ];
 
-        $className = TestCase::createTestBundle($bundleName, $dependencies);
-        
-        $this->assertTrue(class_exists($className));
+        $className = AbstractTestCase::createTestBundle($bundleName, $dependencies);
+
+        $this->assertInstanceOf(BundleDependencyInterface::class, new $className());
         $this->assertEquals("TestBundle\\{$bundleName}\\{$bundleName}", $className);
-        
+
         $bundleDependencies = $className::getBundleDependencies();
         $this->assertEquals($dependencies, $bundleDependencies);
     }
@@ -29,10 +33,10 @@ class TestCaseTest extends PHPUnitTestCase
     public function testCreateTestBundleWithoutDependencies(): void
     {
         $bundleName = 'EmptyBundle' . uniqid();
-        
-        $className = TestCase::createTestBundle($bundleName);
-        
-        $this->assertTrue(class_exists($className));
+
+        $className = AbstractTestCase::createTestBundle($bundleName);
+
+        $this->assertInstanceOf(BundleDependencyInterface::class, new $className());
         $bundleDependencies = $className::getBundleDependencies();
         $this->assertIsArray($bundleDependencies);
         $this->assertEmpty($bundleDependencies);
@@ -43,15 +47,15 @@ class TestCaseTest extends PHPUnitTestCase
         $bundleName = 'ReusableBundle' . uniqid();
         /** @var array<class-string, array<string, bool>> $dependencies */
         $dependencies = [\stdClass::class => ['all' => true]];
-        
+
         // 第一次创建
-        $className1 = TestCase::createTestBundle($bundleName, $dependencies);
-        
+        $className1 = AbstractTestCase::createTestBundle($bundleName, $dependencies);
+
         // 第二次创建相同的 bundle
-        $className2 = TestCase::createTestBundle($bundleName, $dependencies);
-        
+        $className2 = AbstractTestCase::createTestBundle($bundleName, $dependencies);
+
         // 应该返回相同的类名
         $this->assertEquals($className1, $className2);
-        $this->assertTrue(class_exists($className1));
+        $this->assertInstanceOf(BundleDependencyInterface::class, new $className1());
     }
 }

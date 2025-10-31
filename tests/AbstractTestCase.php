@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace Tourze\BundleDependency\Tests;
 
-class TestCase extends \PHPUnit\Framework\TestCase
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * @internal
+ */
+#[CoversClass(AbstractTestCase::class)]
+abstract class AbstractTestCase extends TestCase
 {
     /**
      * @param array<class-string, array<string, bool>> $dependencies
+     * @return class-string
      */
     public static function createTestBundle(string $name, array $dependencies = []): string
     {
@@ -17,11 +25,13 @@ class TestCase extends \PHPUnit\Framework\TestCase
                 namespace TestBundle\\{$name};
                 class {$name} implements \\Tourze\\BundleDependency\\BundleDependencyInterface {
                     public static function getBundleDependencies(): array {
-                        return " . var_export($dependencies, true) . ";
+                        return " . var_export($dependencies, true) . ';
                     }
                 }
-            ");
+            ');
         }
+
+        /** @var class-string $className */
         return $className;
     }
 }

@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Tourze\BundleDependency\Tests\Unit;
+namespace Tourze\BundleDependency\Tests;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpKernel\Bundle\Bundle;
 use Tourze\BundleDependency\BundleDependencyInterface;
 
-class BundleDependencyInterfaceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(BundleDependencyInterface::class)]
+final class BundleDependencyInterfaceTest extends TestCase
 {
     public function testInterfaceExists(): void
     {
@@ -18,7 +24,7 @@ class BundleDependencyInterfaceTest extends TestCase
     {
         $reflection = new \ReflectionClass(BundleDependencyInterface::class);
         $this->assertTrue($reflection->hasMethod('getBundleDependencies'));
-        
+
         $method = $reflection->getMethod('getBundleDependencies');
         $this->assertTrue($method->isPublic());
         $this->assertTrue($method->isStatic());
@@ -28,19 +34,19 @@ class BundleDependencyInterfaceTest extends TestCase
     {
         $testBundle = new class implements BundleDependencyInterface {
             /**
-             * @return array<class-string, array<string, bool>>
+             * @return array<class-string<Bundle>, array<string, bool>>
              */
             public static function getBundleDependencies(): array
             {
                 return [
-                    \stdClass::class => ['all' => true],
+                    Bundle::class => ['all' => true],
                 ];
             }
         };
 
         $dependencies = $testBundle::getBundleDependencies();
-        $this->assertArrayHasKey(\stdClass::class, $dependencies);
-        $this->assertArrayHasKey('all', $dependencies[\stdClass::class]);
-        $this->assertTrue($dependencies[\stdClass::class]['all']);
+        $this->assertArrayHasKey(Bundle::class, $dependencies);
+        $this->assertArrayHasKey('all', $dependencies[Bundle::class]);
+        $this->assertTrue($dependencies[Bundle::class]['all']);
     }
 }

@@ -9,30 +9,71 @@ class ResolveHelper
     /**
      * @param array<class-string, array<string, bool>> $bundles
      * @param array<class-string, array<string, bool>> $resolved
-     * @param array<class-string, bool> $resolving
+     * @param array<class-string, bool>                $resolving
+     *
      * @return \Traversable<class-string, array<string, bool>>
      */
-    public static function resolveBundleDependencies(array $bundles, array &$resolved = [], array $resolving = []): \Traversable
+    public static function resolveBundleDependencies(array $bundles, array $resolved = [], array $resolving = []): \Traversable
     {
+        $state = new ResolutionState($resolved, $resolving);
+        yield from self::resolveBundleDependenciesWithState($bundles, $state);
+    }
+
+    /**
+     * @param array<class-string, array<string, bool>> $bundles
+     *
+     * @return \Traversable<class-string, array<string, bool>>
+     */
+    private static function resolveBundleDependenciesWithState(array $bundles, ResolutionState $state): \Traversable
+    {
+        $currentState = $state;
+
         foreach ($bundles as $bundle => $env) {
-            if (isset($resolving[$bundle])) {
+            // 确保 bundle 是字符串类型（防止数字索引数组问题）
+            if (!is_string($bundle)) {
                 continue;
-                //throw new RuntimeException("循环依赖检测到：{$bundle}");
             }
-            if (!isset($resolved[$bundle])) {
-                $resolving[$bundle] = true;
-                if (is_subclass_of($bundle, BundleDependencyInterface::class)) {
-                    $dependencies = $bundle::getBundleDependencies();
-                    foreach (static::resolveBundleDependencies($dependencies, $resolved, $resolving) as $_bundle => $_env) {
-                        yield $_bundle => $_env;
-                    }
-                }
-                unset($resolving[$bundle]);
-                $resolved[$bundle] = $env;
-                yield $bundle => $env;
+
+            if ($currentState->isCircularDependency($bundle)) {
+                continue;
+            }
+
+            if ($currentState->isAlreadyResolved($bundle)) {
+                continue;
+            }
+
+            [$resultState, $results] = self::resolveBundleWithState($bundle, $env, $currentState);
+            $currentState = $resultState;
+
+            yield from $results;
+        }
+    }
+
+    /**
+     * @param class-string    $bundle
+     * @param array<string, bool> $env
+     *
+     * @return array{ResolutionState, array<class-string, array<string, bool>>}
+     */
+    private static function resolveBundleWithState(string $bundle, array $env, ResolutionState $state): array
+    {
+        $workingState = $state->markResolving($bundle);
+        $results = [];
+
+        if (is_subclass_of($bundle, BundleDependencyInterface::class)) {
+            /** @var array<class-string, array<string, bool>> $dependencies */
+            $dependencies = $bundle::getBundleDependencies();
+            foreach (self::resolveBundleDependenciesWithState($dependencies, $workingState) as $depBundle => $depEnv) {
+                $results[$depBundle] = $depEnv;
+                $workingState = $workingState->markResolved($depBundle, $depEnv);
             }
         }
-        //return $resolved;
+
+        $workingState = $workingState->unmarkResolving($bundle);
+        $workingState = $workingState->markResolved($bundle, $env);
+        $results[$bundle] = $env;
+
+        return [$workingState, $results];
     }
 
     /**
@@ -52,7 +93,7 @@ class ResolveHelper
             return;
         }
 
-        foreach (static::resolveBundleDependencies([$className => ['all' => true]]) as $bundle => $env) {
+        foreach (self::resolveBundleDependencies([$className => ['all' => true]]) as $bundle => $env) {
             // 满足条件才返回喔
             $tmp = explode('\\', $bundle, 2);
             if (count($tmp) > 1 && $tmp[0] === $tmp[1]) {
